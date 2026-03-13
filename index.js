@@ -11,14 +11,47 @@ const CONFIG = {
   NEWS_API_KEY: "pub_d428cf4f09b24a8c82cc2f0ec85416a2",
   RESEND_API_KEY: "re_YCxonmZW_LNdFu4G78tVL6941kKPVjiYB",
   FROM_EMAIL: "The Briefing <onboarding@resend.dev>",
-  SEND_TIME_HOUR: 7, // 7 AM your time
-  SUBSCRIBERS: [
-    { name: "Carter", email: "carter.vash1@gmail.com" }
-    // Add more like: { name: "Jane", email: "jane@email.com" }
-  ],
-  STOCKS_TO_WATCH: ["AAPL", "NVDA", "MSFT"],
-  FAVORITE_TEAMS: ["Cowboys", "Thunder", "Stars"],
+  SUPABASE_URL: "https://fujiejrtjcgetbscoqax.supabase.co",
+  SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1amllanJ0amNnZXRic2NvcWF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MjQzNzYsImV4cCI6MjA4OTAwMDM3Nn0.2xVwAwqAu1rQsPoGq2jWMRcjmAVueiTqOXSE3iz_Hw8",
 };
+
+// ── FETCH PREFERENCES FROM SUPABASE ───────
+function fetchPreferences() {
+  return new Promise((resolve) => {
+    const url = `${CONFIG.SUPABASE_URL}/rest/v1/preferences?select=*`;
+    const options = {
+      headers: {
+        "apikey": CONFIG.SUPABASE_KEY,
+        "Authorization": `Bearer ${CONFIG.SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+      }
+    };
+    https.get(url, options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        try {
+          const rows = JSON.parse(data);
+          console.log(`📋 Loaded ${rows.length} subscriber(s) from Supabase`);
+          resolve(rows.map(r => ({
+            name: r.name,
+            email: r.email,
+            sendHour: r.send_hour || 7,
+            stocks: (r.stocks || "AAPL,NVDA,MSFT").split(",").map(s => s.trim()),
+            teams: (r.teams || "Cowboys,Lakers,Yankees").split(",").map(s => s.trim()),
+            topics: (r.topics || "markets,tech,sports,politics").split(",").map(s => s.trim()),
+          })));
+        } catch(e) {
+          console.error("Failed to parse preferences:", e.message);
+          resolve([]);
+        }
+      });
+    }).on("error", (e) => {
+      console.error("Failed to fetch preferences:", e.message);
+      resolve([]);
+    });
+  });
+}
 
 // ── FETCH NEWS FROM NEWSDATA.IO ───────────
 function fetchNews(query) {
@@ -232,9 +265,17 @@ function sendEmail(to, toName, subject, html) {
 // ── MAIN: FETCH + BUILD + SEND ─────────────
 async function sendDailyBriefing() {
   console.log(`\n📰 The Briefing — ${new Date().toLocaleString()}`);
+
+  // Load preferences from Supabase
+  const subscribers = await fetchPreferences();
+  if (subscribers.length === 0) {
+    console.log("No subscribers found — skipping send.");
+    return;
+  }
+
+  // Fetch news (shared across all subscribers)
   console.log("Fetching news...");
 
-  // Fetch news sections one at a time (GNews free plan rate limit)
   console.log("Fetching markets news...");
   const marketsNews = await fetchNews("stock market Wall Street S&P");
   await new Promise(r => setTimeout(r, 2000));
@@ -250,63 +291,41 @@ async function sendDailyBriefing() {
   console.log("Fetching politics news...");
   const politicsNews = await fetchNews("US politics war geopolitics");
 
-  // Fetch stock prices
-  const stockLines = await Promise.all(
-    CONFIG.STOCKS_TO_WATCH.map(fetchStock)
-  );
-
-  // Build sections
-  const sections = [
-    {
-      icon: "📉",
-      label: "Markets & Finance",
-      headline: marketsNews[0]?.title || "Market update unavailable",
-      stories: marketsNews.slice(0, 3).map(a => ({
-        title: a.title,
-        description: a.description,
-        url: a.url,
-      })),
-    },
-    {
-      icon: "🤖",
-      label: "AI & Tech",
-      headline: techNews[0]?.title || "Tech update unavailable",
-      stories: techNews.slice(0, 3).map(a => ({
-        title: a.title,
-        description: a.description,
-        url: a.url,
-      })),
-    },
-    {
-      icon: "🏆",
-      label: "Sports",
-      headline: sportsNews[0]?.title || "Sports update unavailable",
-      stories: sportsNews.slice(0, 3).map(a => ({
-        title: a.title,
-        description: a.description,
-        url: a.url,
-      })),
-    },
-    {
-      icon: "⚔️",
-      label: "War & Politics",
-      headline: politicsNews[0]?.title || "Politics update unavailable",
-      stories: politicsNews.slice(0, 3).map(a => ({
-        title: a.title,
-        description: a.description,
-        url: a.url,
-      })),
-    },
-  ];
-
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric"
   });
   const subject = `Your Briefing for ${today} — ${marketsNews[0]?.title?.slice(0, 60) || "Daily update"}...`;
 
-  // Send to every subscriber
-  console.log(`Sending to ${CONFIG.SUBSCRIBERS.length} subscriber(s)...`);
-  for (const sub of CONFIG.SUBSCRIBERS) {
+  // Send personalized email to each subscriber
+  console.log(`Sending to ${subscribers.length} subscriber(s)...`);
+  for (const sub of subscribers) {
+
+    // Fetch this subscriber's personal stocks
+    const stockLines = await Promise.all(sub.stocks.map(fetchStock));
+
+    // Build sections based on their topic preferences
+    const sections = [];
+    if (sub.topics.includes("markets")) sections.push({
+      icon: "📉", label: "Markets & Finance",
+      headline: marketsNews[0]?.title || "Market update unavailable",
+      stories: marketsNews.slice(0, 3).map(a => ({ title: a.title, description: a.description, url: a.url })),
+    });
+    if (sub.topics.includes("tech")) sections.push({
+      icon: "🤖", label: "AI & Tech",
+      headline: techNews[0]?.title || "Tech update unavailable",
+      stories: techNews.slice(0, 3).map(a => ({ title: a.title, description: a.description, url: a.url })),
+    });
+    if (sub.topics.includes("sports")) sections.push({
+      icon: "🏆", label: "Sports",
+      headline: sportsNews[0]?.title || "Sports update unavailable",
+      stories: sportsNews.slice(0, 3).map(a => ({ title: a.title, description: a.description, url: a.url })),
+    });
+    if (sub.topics.includes("politics")) sections.push({
+      icon: "⚔️", label: "War & Politics",
+      headline: politicsNews[0]?.title || "Politics update unavailable",
+      stories: politicsNews.slice(0, 3).map(a => ({ title: a.title, description: a.description, url: a.url })),
+    });
+
     const html = buildEmail(sections, stockLines, sub.name);
     await sendEmail(sub.email, sub.name, subject, html);
   }
@@ -354,7 +373,7 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("🚀 Server alive on port", PORT);
   console.log("🔑 NewsData key set:", CONFIG.NEWS_API_KEY !== "YOUR_NEWSDATA_API_KEY_HERE" ? "YES ✓" : "NO ✗ — please update");
   console.log("🔑 Resend key set:", CONFIG.RESEND_API_KEY !== "YOUR_RESEND_API_KEY_HERE" ? "YES ✓" : "NO ✗ — please update");
-  console.log("📧 Sending to:", CONFIG.SUBSCRIBERS.map(s => s.email).join(", "));
+  console.log("🔑 Supabase set:", CONFIG.SUPABASE_URL !== "YOUR_SUPABASE_URL_HERE" ? "YES ✓" : "NO ✗ — please update");
   startScheduler();
 });
 
