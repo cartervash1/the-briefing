@@ -8,7 +8,7 @@ const http = require("http");
 
 // ── YOUR KEYS (fill these in) ──────────────
 const CONFIG = {
-  NEWS_API_KEY: "121bfbd66956a56213235e7d678a2621",
+  NEWS_API_KEY: "pub_d428cf4f09b24a8c82cc2f0ec85416a2",
   RESEND_API_KEY: "re_YCxonmZW_LNdFu4G78tVL6941kKPVjiYB",
   FROM_EMAIL: "The Briefing <onboarding@resend.dev>",
   SEND_TIME_HOUR: 7, // 7 AM your time
@@ -304,5 +304,6 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("📧 Sending to:", CONFIG.SUBSCRIBERS.map(s => s.email).join(", "));
   startScheduler();
 });
+
 
 
