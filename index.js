@@ -13,18 +13,18 @@ const CONFIG = {
   FROM_EMAIL: "The Briefing <onboarding@resend.dev>",
   SEND_TIME_HOUR: 7, // 7 AM your time
   SUBSCRIBERS: [
-    { name: "Carter", email: "carter.vash1@gmail.com" }
+    { name: "carter", email: "carter.vash1@gmail.com" }
     // Add more like: { name: "Jane", email: "jane@email.com" }
   ],
   STOCKS_TO_WATCH: ["AAPL", "NVDA", "MSFT"],
   FAVORITE_TEAMS: ["Cowboys", "Lakers", "Yankees"],
 };
 
-// ── FETCH NEWS FROM GNEWS ─────────────────
+// ── FETCH NEWS FROM NEWSDATA.IO ───────────
 function fetchNews(query) {
   return new Promise((resolve) => {
     const q = encodeURIComponent(query);
-    const url = `https://gnews.io/api/v4/search?q=${q}&sortby=publishedAt&max=3&lang=en&apikey=${CONFIG.NEWS_API_KEY}`;
+    const url = `https://newsdata.io/api/1/news?apikey=${CONFIG.NEWS_API_KEY}&q=${q}&language=en&size=3`;
 
     https.get(url, (res) => {
       let data = "";
@@ -32,8 +32,19 @@ function fetchNews(query) {
       res.on("end", () => {
         try {
           const parsed = JSON.parse(data);
-          resolve(parsed.articles || []);
-        } catch {
+          console.log("NewsData response status:", parsed.status);
+          console.log("NewsData results count:", (parsed.results || []).length);
+          if (parsed.message) console.log("NewsData message:", parsed.message);
+          // NewsData.io returns { results: [...] }
+          const articles = (parsed.results || []).map(a => ({
+            title: a.title,
+            description: a.description,
+            url: a.link,
+          }));
+          resolve(articles);
+        } catch(e) {
+          console.log("NewsData parse error:", e.message);
+          console.log("Raw response:", data.slice(0, 200));
           resolve([]);
         }
       });
@@ -299,11 +310,12 @@ process.on("unhandledRejection", (err) => {
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log("🚀 Server alive on port", PORT);
-  console.log("🔑 NewsAPI key set:", CONFIG.NEWS_API_KEY !== "YOUR_NEWSAPI_KEY_HERE" ? "YES ✓" : "NO ✗ — please update");
+  console.log("🔑 NewsData key set:", CONFIG.NEWS_API_KEY !== "YOUR_NEWSDATA_API_KEY_HERE" ? "YES ✓" : "NO ✗ — please update");
   console.log("🔑 Resend key set:", CONFIG.RESEND_API_KEY !== "YOUR_RESEND_API_KEY_HERE" ? "YES ✓" : "NO ✗ — please update");
   console.log("📧 Sending to:", CONFIG.SUBSCRIBERS.map(s => s.email).join(", "));
   startScheduler();
 });
+
 
 
 
