@@ -202,7 +202,7 @@ async function sendDailyBriefing() {
   await new Promise(r => setTimeout(r, 2000));
 
   console.log("Fetching sports news...");
-  const sportsNews = await fetchNews(`NFL NBA MLB ${CONFIG.FAVORITE_TEAMS.join(" ")}`);
+  const sportsNews = await fetchNews("NFL NBA baseball basketball sports");
   await new Promise(r => setTimeout(r, 2000));
 
   console.log("Fetching politics news...");
@@ -315,6 +315,7 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("📧 Sending to:", CONFIG.SUBSCRIBERS.map(s => s.email).join(", "));
   startScheduler();
 });
+
 
 
 
