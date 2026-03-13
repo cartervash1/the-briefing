@@ -17,7 +17,7 @@ const CONFIG = {
     // Add more like: { name: "Jane", email: "jane@email.com" }
   ],
   STOCKS_TO_WATCH: ["AAPL", "NVDA", "MSFT"],
-  FAVORITE_TEAMS: ["Cowboys", "Lakers", "Yankees"],
+  FAVORITE_TEAMS: ["Cowboys", "Thunder", "Stars"],
 };
 
 // ── FETCH NEWS FROM NEWSDATA.IO ───────────
@@ -82,64 +82,106 @@ function buildEmail(sections, stockLines, recipientName) {
     weekday: "long", year: "numeric", month: "long", day: "numeric"
   });
 
-  const stockTable = stockLines.map(s =>
-    `<tr><td style="padding:4px 12px 4px 0;font-family:monospace;font-size:13px;color:#333;">${s}</td></tr>`
-  ).join("");
-
-  const sectionHTML = sections.map(sec => `
-    <div style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid #e8e3d9;">
-      <div style="font-family:monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#c8392b;margin-bottom:8px;">${sec.icon} ${sec.label}</div>
-      <div style="font-family:'Georgia',serif;font-size:18px;font-weight:bold;color:#0d0d0d;margin-bottom:8px;line-height:1.3;">${sec.headline}</div>
-      ${sec.stories.map(s => `
-        <div style="margin-bottom:10px;">
-          <div style="font-size:13px;font-weight:600;color:#1a3a5c;margin-bottom:2px;">${s.title}</div>
-          <div style="font-size:12px;color:#666;line-height:1.5;">${s.description || ""}</div>
-          ${s.url ? `<a href="${s.url}" style="font-size:11px;color:#c8392b;font-family:monospace;">Read more →</a>` : ""}
+  // Parse stock lines into rich cards
+  const stockCards = stockLines.map(s => {
+    const isDown = s.includes("▼");
+    const color = isDown ? "#c8392b" : "#2d6a4f";
+    const bg = isDown ? "#fff5f5" : "#f0fff4";
+    const border = isDown ? "#f5c6c6" : "#b7e4c7";
+    return `
+      <td style="padding:0 6px 0 0;">
+        <div style="background:${bg};border:1px solid ${border};border-radius:6px;padding:10px 14px;min-width:120px;">
+          <div style="font-family:monospace;font-size:11px;letter-spacing:1px;color:#888;margin-bottom:3px;">${s.split(":")[0]}</div>
+          <div style="font-family:monospace;font-size:15px;font-weight:bold;color:${color};">${s.split(": ")[1] || ""}</div>
         </div>
-      `).join("")}
-    </div>
-  `).join("");
+      </td>`;
+  }).join("");
 
-  return `
-<!DOCTYPE html>
+  const sectionHTML = sections.map((sec, i) => {
+    const isLast = i === sections.length - 1;
+    const storiesHTML = sec.stories.map((s, si) => {
+      const isFirst = si === 0;
+      return `
+        <div style="padding:14px 0;border-bottom:1px solid #f0ebe0;">
+          ${isFirst ? `<div style="display:inline-block;background:#c8392b;color:white;font-family:monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:2px;margin-bottom:6px;">Top Story</div>` : ""}
+          <div style="font-family:'Georgia',serif;font-size:${isFirst ? "16px" : "14px"};font-weight:bold;color:#0d0d0d;line-height:1.4;margin-bottom:6px;">${s.title || ""}</div>
+          <div style="font-size:13px;color:#555;line-height:1.7;margin-bottom:8px;">${s.description || "No description available."}</div>
+          ${s.url ? `<a href="${s.url}" style="font-family:monospace;font-size:11px;color:#c8392b;text-decoration:none;letter-spacing:0.5px;">READ FULL STORY →</a>` : ""}
+        </div>`;
+    }).join("");
+
+    return `
+      <div style="margin-bottom:${isLast ? "0" : "32px"};padding-bottom:${isLast ? "0" : "32px"};${isLast ? "" : "border-bottom:2px solid #e8e3d9;"}">
+        <table style="border-collapse:collapse;width:100%;margin-bottom:12px;">
+          <tr>
+            <td>
+              <span style="font-family:monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#c8392b;">${sec.icon} ${sec.label}</span>
+            </td>
+            <td style="text-align:right;">
+              <span style="font-family:monospace;font-size:10px;color:#bbb;letter-spacing:1px;">${new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
+            </td>
+          </tr>
+        </table>
+        ${storiesHTML}
+      </div>`;
+  }).join("");
+
+  return `<!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f5f0e8;font-family:'Georgia',serif;">
-  <div style="max-width:620px;margin:0 auto;background:white;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>The Briefing</title>
+</head>
+<body style="margin:0;padding:0;background:#f0ebe0;font-family:'Georgia',serif;">
+  <div style="max-width:640px;margin:0 auto;">
+
+    <!-- Top rule -->
+    <div style="height:4px;background:linear-gradient(90deg,#c8392b 0%,#1a3a5c 100%);"></div>
 
     <!-- Header -->
-    <div style="background:#0d0d0d;padding:28px 32px;border-bottom:4px solid #c8392b;">
-      <div style="font-family:monospace;font-size:11px;letter-spacing:2px;color:#666;text-transform:uppercase;margin-bottom:6px;">${today}</div>
-      <div style="font-family:'Georgia',serif;font-size:28px;font-weight:900;color:white;letter-spacing:-0.5px;">The<span style="color:#c8392b;">.</span>Briefing</div>
-      <div style="color:#888;font-size:13px;margin-top:4px;">Good morning, ${recipientName}. Here's what matters today.</div>
-    </div>
-
-    <!-- Stocks Bar -->
-    <div style="background:#1a3a5c;padding:12px 32px;">
-      <div style="font-family:monospace;font-size:10px;letter-spacing:2px;color:#8fa8c8;text-transform:uppercase;margin-bottom:6px;">Your Stocks</div>
-      <table style="border-collapse:collapse;">${stockTable}</table>
-    </div>
-
-    <!-- Body -->
-    <div style="padding:28px 32px;">
-      ${sectionHTML}
-
-      <!-- Bottom Line -->
-      <div style="background:#0d0d0d;color:white;padding:16px 20px;border-radius:4px;margin-top:8px;">
-        <div style="font-family:monospace;font-size:10px;letter-spacing:2px;color:#8fa8c8;text-transform:uppercase;margin-bottom:6px;">⚡ Why This Matters To You</div>
-        <div style="font-size:13px;color:#ddd;line-height:1.6;">
-          Stay ahead of the market, your teams, and the world. This briefing was built specifically for your interests — stocks, sports, tech, and global events that affect your money and your day.
-        </div>
+    <div style="background:#0d0d0d;padding:32px 36px 24px;">
+      <div style="font-family:monospace;font-size:10px;letter-spacing:3px;color:#555;text-transform:uppercase;margin-bottom:10px;">${today}</div>
+      <table style="border-collapse:collapse;width:100%;">
+        <tr>
+          <td>
+            <div style="font-family:'Georgia',serif;font-size:32px;font-weight:900;color:white;letter-spacing:-1px;line-height:1;">
+              The<span style="color:#c8392b;">.</span>Briefing
+            </div>
+          </td>
+          <td style="text-align:right;vertical-align:bottom;">
+            <div style="font-family:monospace;font-size:10px;color:#444;letter-spacing:1px;text-transform:uppercase;">Daily Intelligence</div>
+          </td>
+        </tr>
+      </table>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #222;font-size:13px;color:#888;">
+        Good morning, <strong style="color:#bbb;">${recipientName}</strong>. Here is everything that matters today.
       </div>
+    </div>
+
+    <!-- Stock Cards -->
+    <div style="background:#1a3a5c;padding:16px 36px;">
+      <div style="font-family:monospace;font-size:9px;letter-spacing:3px;color:#8fa8c8;text-transform:uppercase;margin-bottom:10px;">📈 Your Portfolio</div>
+      <table style="border-collapse:collapse;"><tr>${stockCards}</tr></table>
+    </div>
+
+    <!-- Main Content -->
+    <div style="background:white;padding:32px 36px;">
+      ${sectionHTML}
     </div>
 
     <!-- Footer -->
-    <div style="padding:16px 32px;border-top:1px solid #e8e3d9;text-align:center;">
-      <div style="font-family:monospace;font-size:10px;color:#aaa;letter-spacing:1px;">
-        THE BRIEFING · DAILY INTELLIGENCE REPORT<br>
-        <span style="color:#ccc;">You're receiving this because you subscribed.</span>
+    <div style="background:#0d0d0d;padding:20px 36px;text-align:center;">
+      <div style="font-family:'Georgia',serif;font-size:14px;font-weight:bold;color:white;margin-bottom:4px;">
+        The<span style="color:#c8392b;">.</span>Briefing
+      </div>
+      <div style="font-family:monospace;font-size:9px;color:#444;letter-spacing:2px;text-transform:uppercase;">
+        Daily Intelligence Report · Personal Edition
       </div>
     </div>
+
+    <!-- Bottom rule -->
+    <div style="height:4px;background:linear-gradient(90deg,#1a3a5c 0%,#c8392b 100%);"></div>
 
   </div>
 </body>
@@ -315,6 +357,7 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("📧 Sending to:", CONFIG.SUBSCRIBERS.map(s => s.email).join(", "));
   startScheduler();
 });
+
 
 
 
