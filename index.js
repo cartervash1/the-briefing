@@ -8,23 +8,23 @@ const http = require("http");
 
 // ── YOUR KEYS (fill these in) ──────────────
 const CONFIG = {
-  NEWS_API_KEY: "434d0f260d9b4e12ad415932103f92f2",
+  NEWS_API_KEY: "121bfbd66956a56213235e7d678a2621",
   RESEND_API_KEY: "re_YCxonmZW_LNdFu4G78tVL6941kKPVjiYB",
   FROM_EMAIL: "The Briefing <onboarding@resend.dev>",
   SEND_TIME_HOUR: 7, // 7 AM your time
   SUBSCRIBERS: [
-    { name: "You", email: "carter.vash1@gmail.com" }
+    { name: "Carter", email: "carter.vash1@gmail.com" }
     // Add more like: { name: "Jane", email: "jane@email.com" }
   ],
   STOCKS_TO_WATCH: ["AAPL", "NVDA", "MSFT"],
   FAVORITE_TEAMS: ["Cowboys", "Lakers", "Yankees"],
 };
 
-// ── FETCH NEWS FROM NEWSAPI ────────────────
+// ── FETCH NEWS FROM GNEWS ─────────────────
 function fetchNews(query) {
   return new Promise((resolve) => {
     const q = encodeURIComponent(query);
-    const url = `https://newsapi.org/v2/everything?q=${q}&sortBy=publishedAt&pageSize=3&language=en&apiKey=${CONFIG.NEWS_API_KEY}`;
+    const url = `https://gnews.io/api/v4/search?q=${q}&sortby=publishedAt&max=3&lang=en&apikey=${CONFIG.NEWS_API_KEY}`;
 
     https.get(url, (res) => {
       let data = "";
@@ -296,3 +296,4 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("📧 Sending to:", CONFIG.SUBSCRIBERS.map(s => s.email).join(", "));
   startScheduler();
 });
+
