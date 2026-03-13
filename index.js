@@ -181,13 +181,21 @@ async function sendDailyBriefing() {
   console.log(`\n📰 The Briefing — ${new Date().toLocaleString()}`);
   console.log("Fetching news...");
 
-  // Fetch all news sections in parallel
-  const [marketsNews, techNews, sportsNews, politicsNews] = await Promise.all([
-    fetchNews("stock market Wall Street S&P"),
-    fetchNews("artificial intelligence technology"),
-    fetchNews(`NFL NBA MLB ${CONFIG.FAVORITE_TEAMS.join(" ")}`),
-    fetchNews("US politics war geopolitics"),
-  ]);
+  // Fetch news sections one at a time (GNews free plan rate limit)
+  console.log("Fetching markets news...");
+  const marketsNews = await fetchNews("stock market Wall Street S&P");
+  await new Promise(r => setTimeout(r, 2000));
+
+  console.log("Fetching tech news...");
+  const techNews = await fetchNews("artificial intelligence technology");
+  await new Promise(r => setTimeout(r, 2000));
+
+  console.log("Fetching sports news...");
+  const sportsNews = await fetchNews(`NFL NBA MLB ${CONFIG.FAVORITE_TEAMS.join(" ")}`);
+  await new Promise(r => setTimeout(r, 2000));
+
+  console.log("Fetching politics news...");
+  const politicsNews = await fetchNews("US politics war geopolitics");
 
   // Fetch stock prices
   const stockLines = await Promise.all(
@@ -296,4 +304,5 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("📧 Sending to:", CONFIG.SUBSCRIBERS.map(s => s.email).join(", "));
   startScheduler();
 });
+
 
