@@ -13,7 +13,8 @@ const CONFIG = {
   FROM_EMAIL: "The Briefing <onboarding@resend.dev>",
   SEND_TIME_HOUR: 7, // 7 AM your time
   SUBSCRIBERS: [
-    { name: "carter", email: "carter.vash1@gmail.com" }
+    { name: "Carter", email: "carter.vash1@gmail.com" },
+    { name: "Audrey", email: "akpehlps03@gmail.com" }
     // Add more like: { name: "Jane", email: "jane@email.com" }
   ],
   STOCKS_TO_WATCH: ["AAPL", "NVDA", "MSFT"],
@@ -357,6 +358,7 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("📧 Sending to:", CONFIG.SUBSCRIBERS.map(s => s.email).join(", "));
   startScheduler();
 });
+
 
 
 
